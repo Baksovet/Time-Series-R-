@@ -42,10 +42,11 @@ model_fit_ets <- exp_smoothing() %>%
   fit(Count ~ Date, data = training(splits))
 
 # Model 3: prophet ----
-model_fit_prophet <- prophet_reg() %>%
+model_fit_prophet <- prophet_reg(seasonality_yearly = T) %>%
   set_engine(engine = "prophet") %>%
   fit(Count ~ Date, data = training(splits))
 
+#Step 3 - Add fitted models to a Model Table.----
 
 models_tbl <- modeltime_table(
   
@@ -57,12 +58,19 @@ models_tbl <- modeltime_table(
 
 models_tbl
 
+#Step 4 - Calibrate the model to a testing set.----
+
 calibration_tbl <- models_tbl %>%
   modeltime_calibrate(new_data = testing(splits))
 
 calibration_tbl
 
+
+
+#Step 5 - Testing Set Forecast & Accuracy Evaluation----
+#5A - Visualizing the Forecast Test----
 calibration_tbl %>%
+  filter(.model_id == 1) %>%
   modeltime_forecast(
     new_data    = testing(splits),
     actual_data = raw
@@ -73,14 +81,14 @@ calibration_tbl %>%
   )
 
 
-# - Accuracy Metrics----
+#5B - Accuracy Metrics----
 calibration_tbl %>%
   modeltime_accuracy() %>%
   table_modeltime_accuracy(
     .interactive = interactive
   )
 
-# - Refit to Full Dataset & Forecast Forward----
+#Step 6 - Refit to Full Dataset & Forecast Forward----
 
 refit_tbl <- calibration_tbl %>%
   modeltime_refit(data = raw)
